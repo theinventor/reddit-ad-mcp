@@ -194,6 +194,33 @@ class RedditAdsClient:
                 accounts.append(acct)
         return {"data": accounts}
 
+    def get_profiles(self, account_id: str) -> dict:
+        """List posting profiles (Reddit users) available to an ad account (all pages)."""
+        return self._get_paged(f"/ad_accounts/{account_id}/profiles")
+
+    def _default_profile(self, account_id: str) -> str:
+        """Return the account's posting profile when it is unambiguous.
+
+        Raises if there are zero or multiple profiles. The id goes into a URL
+        path, so returning None would post to a literal `/profiles/None/...`;
+        the caller must pass profile_id explicitly in those cases.
+        """
+        data = self.get_profiles(account_id).get("data", []) or []
+        if not data:
+            raise ValueError(
+                "No posting profile found for this account; pass profile_id explicitly."
+            )
+        if len(data) > 1:
+            ids = ", ".join(f"{p.get('id')} ({p.get('name')})" for p in data)
+            raise ValueError(
+                f"Multiple profiles found ({ids}); pass profile_id explicitly."
+            )
+        return data[0].get("id")
+
+    def get_posts(self, profile_id: str) -> dict:
+        """List posts under a profile (all pages)."""
+        return self._get_paged(f"/profiles/{profile_id}/posts")
+
     # --- entities -------------------------------------------------------------
 
     def get_campaigns(self, account_id: str) -> dict:
@@ -404,6 +431,28 @@ class RedditAdsClient:
         if profile_id:
             data["profile_id"] = profile_id
         return self._request("POST", f"/ad_accounts/{account_id}/ads", json_body={"data": data})
+
+    def create_post(
+        self,
+        profile_id: str,
+        headline: str,
+        body: str = None,
+        post_type: str = "TEXT",
+        allow_comments: bool = False,
+    ) -> dict:
+        """Create a promoted post under a profile.
+
+        Returns the created post (including its id, e.g. t3_xxxxx), which can then
+        be promoted with create_ad. TEXT posts use `headline` + a markdown `body`.
+        Reddit's standard submit API does not cover ad posts, so this is the path
+        for building an ad's creative end-to-end.
+        """
+        if not headline or not headline.strip():
+            raise ValueError("headline is required and cannot be empty.")
+        data = {"type": post_type, "headline": headline, "allow_comments": allow_comments}
+        if body is not None:
+            data["body"] = body
+        return self._request("POST", f"/profiles/{profile_id}/posts", json_body={"data": data})
 
     def _update(self, account_id: str, kind: str, entity_id: str, fields: dict) -> dict:
         """Partial-update an entity via PATCH.

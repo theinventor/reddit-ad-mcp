@@ -11,8 +11,8 @@ ad groups, and ads from an MCP client like Claude.
 
 - **Read:** list ad accounts, campaigns, ad groups, ads; flexible performance
   reports with metrics + breakdowns; daily trends.
-- **Write:** create campaigns, ad groups, and ads; update budgets, names, and
-  status (pause / resume); delete entities.
+- **Write:** create posts, campaigns, ad groups, and ads (full launch flow);
+  update budgets, names, and status (pause / resume); delete entities.
 - OAuth2 with automatic token refresh.
 - Secrets in a gitignored `.env`; non-secret defaults in `config.json`.
 
@@ -112,14 +112,17 @@ claude mcp add reddit-ads -s user -- /abs/path/to/reddit-ad-mcp/.venv/bin/python
 | `get_performance_report` | Performance report with custom metrics + breakdowns. |
 | `get_daily_performance` | Convenience daily trend report. |
 | `get_funding_instruments` | List payment sources for an account. |
+| `get_profiles` | List posting profiles (Reddit users) for an account. |
+| `get_posts` | List existing posts under a profile. |
 
 ### Write (requires the `adsedit` scope)
 
 | Tool | Description |
 |------|-------------|
+| `create_post` | Create a promoted Reddit TEXT post; the new id is in the returned `data.id`. |
 | `create_campaign` | Create a campaign (PAUSED by default). |
 | `create_ad_group` | Create an ad group with targeting + daily budget. |
-| `create_ad` | Promote an existing Reddit post (`post_id`) as an ad. |
+| `create_ad` | Promote a post (`post_id`) as an ad. |
 | `update_campaign` | Rename, change spend cap, pause/resume. |
 | `update_ad_group` | Rename, change daily budget, pause/resume. |
 | `update_ad` | Rename, change click URL, pause/resume. |
@@ -127,8 +130,9 @@ claude mcp add reddit-ads -s user -- /abs/path/to/reddit-ad-mcp/.venv/bin/python
 
 Pause/resume is `update_*` with `configured_status` = `PAUSED` / `ACTIVE`.
 
-> `create_ad` promotes a post that already exists — this server does not create
-> the underlying Reddit post.
+**Launching an ad end-to-end:** `create_post` (the new post's id is in `data.id`)
+→ `create_ad` with that `post_id` into an existing ad group. Put a UTM-tagged link
+in the post body to drive and measure clicks.
 
 ## Example prompts
 
@@ -154,4 +158,6 @@ metrics (`conversion_lead_clicks`, `conversion_sign_up_clicks`,
 
 ## License
 
-MIT (inherited from upstream).
+Fork of [sbmeaper/reddit-ad-mcp](https://github.com/sbmeaper/reddit-ad-mcp),
+which does not include a license file. Check with the upstream author before
+redistribution.

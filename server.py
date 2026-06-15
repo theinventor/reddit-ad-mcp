@@ -239,6 +239,48 @@ def create_ad_group(
 
 
 @mcp.tool()
+def get_profiles(account_id: str = None) -> dict:
+    """List posting profiles (Reddit users) available to an ad account."""
+    account_id = _resolve_account_id(account_id)
+    return client.get_profiles(account_id)
+
+
+@mcp.tool()
+def get_posts(profile_id: str = None, account_id: str = None) -> dict:
+    """List existing posts under a profile (auto-resolves the profile if omitted)."""
+    if not (profile_id and profile_id.strip()):
+        profile_id = client._default_profile(_resolve_account_id(account_id))
+    return client.get_posts(profile_id)
+
+
+@mcp.tool()
+def create_post(
+    headline: str,
+    body: str = None,
+    allow_comments: bool = False,
+    profile_id: str = None,
+    account_id: str = None,
+) -> dict:
+    """
+    Create a promoted Reddit TEXT post. Returns the post id (t3_xxxxx).
+
+    This is the first half of launching an ad: create_post -> take the returned
+    id -> create_ad(post_id=...). Reddit's API does not create ad posts via the
+    normal submit flow, so use this.
+
+    Args:
+        headline: The post title.
+        body: Markdown body. Include a UTM-tagged link (e.g. monstermailbox.com/?utm_source=reddit&utm_medium=cpc&utm_campaign=...) to drive and measure clicks.
+        allow_comments: Allow comments on the post (default False, matching typical ad posts).
+        profile_id: Posting profile (t2_xxxxx). Auto-resolved from the account if omitted.
+        account_id: Ad account ID. Uses default if not provided.
+    """
+    if not (profile_id and profile_id.strip()):
+        profile_id = client._default_profile(_resolve_account_id(account_id))
+    return client.create_post(profile_id, headline, body=body, allow_comments=allow_comments)
+
+
+@mcp.tool()
 def create_ad(
     ad_group_id: str,
     campaign_id: str,
