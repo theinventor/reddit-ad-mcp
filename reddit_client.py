@@ -228,8 +228,8 @@ class RedditAdsClient:
         return self._get_paged(f"/ad_accounts/{account_id}/campaigns")
 
     def get_campaign(self, account_id: str, campaign_id: str) -> dict:
-        """Get a specific campaign."""
-        return self._request("GET", f"/ad_accounts/{account_id}/campaigns/{campaign_id}")
+        """Get a specific campaign. (Items are top-level in v3, not nested under the account.)"""
+        return self._request("GET", f"/campaigns/{campaign_id}")
 
     def get_ad_groups(self, account_id: str, campaign_id: str = None) -> dict:
         """List ad groups for an ad account (all pages), optionally filtered by campaign."""
@@ -464,7 +464,9 @@ class RedditAdsClient:
         """
         if not fields:
             raise ValueError("No fields to update.")
-        path = f"/ad_accounts/{account_id}/{kind}/{entity_id}"
+        # Individual entities are top-level in v3 (/campaigns/{id}, /ad_groups/{id},
+        # /ads/{id}) — NOT nested under /ad_accounts. account_id is unused here.
+        path = f"/{kind}/{entity_id}"
         resp = self._raw("PATCH", path, json_body={"data": fields})
         if resp.status_code == 405:
             resp = self._raw("PUT", path, json_body={"data": fields})
@@ -482,8 +484,11 @@ class RedditAdsClient:
         return self._update(account_id, "ads", ad_id, fields)
 
     def delete_entity(self, account_id: str, kind: str, entity_id: str) -> dict:
-        """Delete a campaign/ad_group/ad. `kind` is one of campaigns, ad_groups, ads."""
-        resp = self._check(self._raw("DELETE", f"/ad_accounts/{account_id}/{kind}/{entity_id}"))
+        """Delete a campaign/ad_group/ad. `kind` is one of campaigns, ad_groups, ads.
+
+        Entities are top-level in v3 (/{kind}/{id}); account_id is unused here.
+        """
+        resp = self._check(self._raw("DELETE", f"/{kind}/{entity_id}"))
         body = resp.text.strip()
         return resp.json() if body else {"deleted": True, "id": entity_id}
 
